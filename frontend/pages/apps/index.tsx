@@ -10,9 +10,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { 
-  PlusIcon, 
-  MagnifyingGlassIcon, 
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
   EllipsisVerticalIcon,
   PlayIcon,
   PauseIcon,
@@ -50,7 +50,7 @@ export default function AppsDashboard() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  
+
   // State management
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -64,9 +64,9 @@ export default function AppsDashboard() {
    */
   const { data: appsData, isLoading, error } = useQuery<PaginatedResponse<App>>(
     ['apps', page, searchQuery, statusFilter],
-    () => api.apps.list({ 
-      page, 
-      limit: 12, 
+    () => api.apps.list({
+      page,
+      limit: 12,
       search: searchQuery || undefined,
       status: statusFilter !== 'all' ? statusFilter : undefined
     }),
@@ -114,17 +114,17 @@ export default function AppsDashboard() {
    * Duplicate app mutation
    */
   const duplicateAppMutation = useMutation(
-    (data: { appId: string; name: string; packageId: string; bundleId: string }) => 
+    (data: { appId: string; name: string; packageId: string; bundleId: string }) =>
       api.apps.duplicate(data.appId, data),
     {
       onSuccess: (data: any) => {
         showToast('App duplicated successfully', 'success');
         queryClient.invalidateQueries(['apps']);
-        router.push(`/apps/${data.data.id}`); 
+          router.push(`/apps/${data.data.app._id}`);
       },
       onError: (error: any) => {
         showToast(error.response?.data?.error || 'Failed to duplicate app', 'error');
-      }
+      } 
     }
   );
 
@@ -141,8 +141,8 @@ export default function AppsDashboard() {
    * Confirm app deletion
    */
   const confirmDeleteApp = () => {
-    if (appToDelete && typeof appToDelete.id === 'string') {
-      deleteAppMutation.mutate(appToDelete.id);
+    if (appToDelete && typeof appToDelete._id === 'string') {
+      deleteAppMutation.mutate(appToDelete._id);
     } else {
       console.error('No app selected for deletion or invalid app ID');
       showToast('No app selected for deletion.', 'error');
@@ -165,9 +165,9 @@ export default function AppsDashboard() {
     const name = `${app.name} (Copy)`;
     const packageId = `${app.packageId}.copy`;
     const bundleId = `${app.bundleId}.copy`;
-    
+
     duplicateAppMutation.mutate({
-      appId: app.id,
+      appId: app._id,
       name,
       packageId,
       bundleId
@@ -179,6 +179,7 @@ export default function AppsDashboard() {
    * @param {string} appId - App ID to build
    */
   const handleBuildApp = (appId: string) => {
+    console.log('Building app:', appId);
     router.push(`/apps/${appId}/build`);
   };
 
@@ -252,7 +253,7 @@ export default function AppsDashboard() {
                   />
                 </div>
               </div>
-              
+
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -276,11 +277,12 @@ export default function AppsDashboard() {
                 </Card>
               ))}
             </div>
-            ) : appsData?.data?.apps?.length ? (
+          ) : appsData?.data?.apps?.length ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
                 {appsData.data.apps.map((app: App) => (
-                  <Card key={app.id} className="p-6 hover:shadow-lg transition-shadow">
+                  console.log('App:', app),
+                  <Card key={app._id} className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">
@@ -293,7 +295,7 @@ export default function AppsDashboard() {
                           {app.status}
                         </span>
                       </div>
-                      
+
                       <div className="relative">
                         <button
                           className="p-1 rounded-full hover:bg-gray-100"
@@ -320,7 +322,7 @@ export default function AppsDashboard() {
 
                     {/* Quick Actions */}
                     <div className="flex space-x-2">
-                      <Link href={`/apps/${app.id}`}>
+                      <Link href={`/apps/${app._id}`}>
                         <Button
                           size="sm"
                           variant="outline"
@@ -330,10 +332,13 @@ export default function AppsDashboard() {
                           View
                         </Button>
                       </Link>
-                      
+
                       <Button
                         size="sm"
-                        onClick={() => handleBuildApp(app.id)}
+                        onClick={() => {
+                          console.log('Building app:', app._id);
+                          handleBuildApp(app._id);
+                        }}
                         className="flex-1 bg-blue-600 hover:bg-blue-700"
                       >
                         <PlayIcon className="h-4 w-4 mr-1" />
@@ -344,7 +349,7 @@ export default function AppsDashboard() {
                     {/* Additional Actions */}
                     <div className="flex justify-between mt-3 pt-3 border-t border-gray-200">
                       <button
-                        onClick={() => handleToggleStatus(app.id)}
+                        onClick={() => handleToggleStatus(app._id)}
                         className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
                         disabled={toggleStatusMutation.isLoading}
                       >
@@ -364,8 +369,8 @@ export default function AppsDashboard() {
                         >
                           <DocumentDuplicateIcon className="h-4 w-4" />
                         </button>
-                        
-                        <Link href={`/apps/${app.id}/stats`}>
+
+                        <Link href={`/apps/${app._id}/stats`}>
                           <ChartBarIcon className="h-4 w-4 text-gray-600 hover:text-gray-800" />
                         </Link>
 
@@ -391,11 +396,11 @@ export default function AppsDashboard() {
                   >
                     Previous
                   </Button>
-                  
+
                   <span className="px-4 py-2 text-sm text-gray-700">
                     Page {page} of {appsData.pagination.pages}
                   </span>
-                  
+
                   <Button
                     variant="outline"
                     onClick={() => setPage(page + 1)}
@@ -415,13 +420,13 @@ export default function AppsDashboard() {
                     No apps found
                   </h3>
                   <p className="text-gray-500">
-                    {searchQuery || statusFilter !== 'all' 
+                    {searchQuery || statusFilter !== 'all'
                       ? 'Try adjusting your search or filters'
                       : 'Get started by creating your first mobile app'
                     }
                   </p>
                 </div>
-                
+
                 {!searchQuery && statusFilter === 'all' && (
                   <Link href="/apps/create">
                     <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
@@ -446,7 +451,7 @@ export default function AppsDashboard() {
           <p className="text-gray-600 mb-6">
             Are you sure you want to delete "{appToDelete?.name}"? This action cannot be undone.
           </p>
-          
+
           <div className="flex justify-end space-x-3">
             <Button
               variant="outline"

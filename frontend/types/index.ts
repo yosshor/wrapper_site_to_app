@@ -114,7 +114,7 @@ export interface User {
  */
 // App Generation Types
 export interface App {
-  id: string;
+  _id: string;
   userId: string;
   name: string;
   packageId: string;
@@ -211,7 +211,7 @@ export interface ApiResponse<T = any> {
 export interface PaginatedResponse<T = any> {
   success: boolean;
   data: {
-    apps: T[];
+    apps: App[];
   };
   pagination: {
     page: number;
