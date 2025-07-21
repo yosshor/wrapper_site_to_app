@@ -1,0 +1,203 @@
+{
+  "templateVersion": "1.0.0",
+  "description": "Mobile App WebView Template Build Configuration",
+  "placeholders": {
+    "APP_NAME": {
+      "description": "Application display name",
+      "required": true,
+      "type": "string",
+      "maxLength": 50
+    },
+    "PACKAGE_ID": {
+      "description": "Android package ID (e.g., com.example.app)",
+      "required": true,
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "BUNDLE_ID": {
+      "description": "iOS bundle ID (e.g., com.example.app)",
+      "required": true,
+      "type": "string",
+      "pattern": "^[A-Za-z0-9.-]+$"
+    },
+    "WEBSITE_URL": {
+      "description": "Website URL to load in WebView",
+      "required": true,
+      "type": "string",
+      "format": "uri"
+    },
+    "APP_VERSION": {
+      "description": "App version (e.g., 1.0.0)",
+      "required": true,
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "FIREBASE_ENABLED": {
+      "description": "Enable Firebase integration",
+      "required": false,
+      "type": "boolean",
+      "default": false
+    },
+    "FIREBASE_ANALYTICS": {
+      "description": "Enable Firebase Analytics",
+      "required": false,
+      "type": "boolean",
+      "default": false
+    },
+    "FIREBASE_CRASHLYTICS": {
+      "description": "Enable Firebase Crashlytics",
+      "required": false,
+      "type": "boolean",
+      "default": false
+    },
+    "FIREBASE_MESSAGING": {
+      "description": "Enable Firebase Cloud Messaging",
+      "required": false,
+      "type": "boolean",
+      "default": false
+    },
+    "FIREBASE_API_KEY": {
+      "description": "Firebase API key",
+      "required": false,
+      "type": "string",
+      "sensitive": true
+    },
+    "FIREBASE_AUTH_DOMAIN": {
+      "description": "Firebase auth domain",
+      "required": false,
+      "type": "string"
+    },
+    "FIREBASE_PROJECT_ID": {
+      "description": "Firebase project ID",
+      "required": false,
+      "type": "string"
+    },
+    "FIREBASE_STORAGE_BUCKET": {
+      "description": "Firebase storage bucket",
+      "required": false,
+      "type": "string"
+    },
+    "FIREBASE_MESSAGING_SENDER_ID": {
+      "description": "Firebase messaging sender ID",
+      "required": false,
+      "type": "string"
+    },
+    "FIREBASE_APP_ID": {
+      "description": "Firebase app ID",
+      "required": false,
+      "type": "string"
+    },
+    "FIREBASE_MEASUREMENT_ID": {
+      "description": "Firebase measurement ID",
+      "required": false,
+      "type": "string"
+    },
+    "APPSFLYER_ENABLED": {
+      "description": "Enable Appsflyer integration",
+      "required": false,
+      "type": "boolean",
+      "default": false
+    },
+    "APPSFLYER_DEV_KEY": {
+      "description": "Appsflyer developer key",
+      "required": false,
+      "type": "string",
+      "sensitive": true
+    },
+    "LEAD_CAPTURE_ENABLED": {
+      "description": "Enable lead capture functionality",
+      "required": false,
+      "type": "boolean",
+      "default": false
+    },
+    "LEAD_CAPTURE_FIELDS": {
+      "description": "Lead capture form fields configuration",
+      "required": false,
+      "type": "array",
+      "default": []
+    },
+    "LEAD_CAPTURE_API": {
+      "description": "Lead capture API endpoint",
+      "required": false,
+      "type": "string",
+      "format": "uri"
+    },
+    "RECAPTCHA_SITE_KEY": {
+      "description": "reCAPTCHA site key for Firebase App Check",
+      "required": false,
+      "type": "string"
+    }
+  },
+  "buildSteps": [
+    {
+      "name": "validate_config",
+      "description": "Validate build configuration"
+    },
+    {
+      "name": "copy_template",
+      "description": "Copy template files to build directory"
+    },
+    {
+      "name": "replace_placeholders",
+      "description": "Replace template placeholders with actual values"
+    },
+    {
+      "name": "copy_assets",
+      "description": "Copy app icon and splash screen assets"
+    },
+    {
+      "name": "update_capacitor_config",
+      "description": "Update Capacitor configuration with app-specific settings"
+    },
+    {
+      "name": "install_dependencies",
+      "description": "Install Node.js dependencies"
+    },
+    {
+      "name": "add_platform",
+      "description": "Add target platform (Android/iOS)"
+    },
+    {
+      "name": "sync_capacitor",
+      "description": "Sync Capacitor project"
+    },
+    {
+      "name": "build_platform",
+      "description": "Build platform-specific application"
+    },
+    {
+      "name": "sign_and_package",
+      "description": "Sign and package the final application"
+    }
+  ],
+  "outputFiles": {
+    "android": {
+      "apk": "android/app/build/outputs/apk/release/app-release.apk",
+      "aab": "android/app/build/outputs/bundle/release/app-release.aab"
+    },
+    "ios": {
+      "ipa": "ios/App/build/App.ipa",
+      "xcarchive": "ios/App/build/App.xcarchive"
+    }
+  },
+  "dependencies": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0",
+    "capacitor": "^5.6.0",
+    "android_sdk": ">=30",
+    "java": ">=11",
+    "gradle": ">=7.0",
+    "xcode": ">=13.0"
+  },
+  "platforms": {
+    "android": {
+      "minSdkVersion": 22,
+      "targetSdkVersion": 34,
+      "compileSdkVersion": 34
+    },
+    "ios": {
+      "deploymentTarget": "13.0",
+      "targetDeviceFamily": "1,2"
+    }
+  }
+} 

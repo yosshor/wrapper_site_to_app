@@ -1,0 +1,40 @@
+{
+  "name": "mobile-app-generator",
+  "version": "1.0.0",
+  "description": "A full-stack platform for generating mobile apps from website URLs",
+  "main": "index.js",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "mobile-template"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:frontend": "cd frontend && npm run start",
+    "start:backend": "cd backend && npm run start",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../mobile-template && npm install",
+    "setup": "npm run install:all && node scripts/setup-env.js",
+    "setup:env": "node scripts/setup-env.js",
+    "setup:db": "docker-compose up -d"
+  },
+  "keywords": [
+    "mobile-app-generator",
+    "webview",
+    "capacitor",
+    "firebase",
+    "appsflyer",
+    "react",
+    "nodejs"
+  ],
+  "author": "YosShor",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 

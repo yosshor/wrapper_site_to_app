@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{APP_NAME}}</title>
+    
+    <!-- App Icon and Meta Tags -->
+    <link rel="icon" type="image/png" href="./assets/icon.png">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{APP_NAME}}">
+    <link rel="apple-touch-icon" href="./assets/icon.png">
+    
+    <!-- CSS Styles -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #3b82f6;
+            overflow: hidden;
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-screen.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .app-logo {
+            width: 120px;
+            height: 120px;
+            border-radius: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .app-name {
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-top: 32px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .webview-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        .webview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+            display: none;
+        }
+
+        .error-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 32px;
+            text-align: center;
+        }
+
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            background: #ef4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .error-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 12px;
+        }
+
+        .error-message {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .retry-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .retry-button:hover {
+            background: #2563eb;
+        }
+
+        .lead-capture-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .lead-capture-form {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .form-subtitle {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .form-field {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .submit-button {
+            width: 100%;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .submit-button:hover {
+            background: #2563eb;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        @media (max-width: 640px) {
+            .lead-capture-form {
+                padding: 24px;
+                margin: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <img src="./assets/icon.png" alt="{{APP_NAME}}" class="app-logo" onerror="this.style.display='none'">
+        <div class="app-name">{{APP_NAME}}</div>
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- WebView Container -->
+    <div class="webview-container">
+        <iframe 
+            id="webviewIframe" 
+            class="webview-iframe"
+            src="{{WEBSITE_URL}}"
+            allow="camera; microphone; geolocation; payment; encrypted-media"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+            loading="eager"
+        ></iframe>
+    </div>
+
+    <!-- Error Screen -->
+    <div class="error-screen" id="errorScreen">
+        <div class="error-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div class="error-title">Connection Error</div>
+        <div class="error-message">Unable to load the website. Please check your internet connection and try again.</div>
+        <button class="retry-button" onclick="retryConnection()">Try Again</button>
+    </div>
+
+    <!-- Lead Capture Modal -->
+    <div class="lead-capture-modal" id="leadCaptureModal">
+        <div class="lead-capture-form">
+            <button class="close-modal" onclick="closeLead Capture()">&times;</button>
+            <div class="form-title">Welcome!</div>
+            <div class="form-subtitle">Please share your details to continue</div>
+            <form id="leadCaptureForm" onsubmit="submitLeadCapture(event)">
+                <div id="leadCaptureFields">
+                    <!-- Dynamic fields will be inserted here -->
+                </div>
+                <button type="submit" class="submit-button">Continue</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Capacitor Core -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/capacitor.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase configuration will be injected here
+        // {{FIREBASE_CONFIG}}
+    </script>
+
+    <!-- Main App JavaScript -->
+    <script>
+        /**
+         * Mobile App WebView Template
+         * Handles WebView loading, lead capture, Firebase integration, and Appsflyer tracking
+         */
+
+        // App configuration (will be injected during build)
+        const APP_CONFIG = {
+            appName: '{{APP_NAME}}',
+            websiteUrl: '{{WEBSITE_URL}}',
+            packageId: '{{PACKAGE_ID}}',
+            features: {
+                firebase: {
+                    enabled: {{FIREBASE_ENABLED}},
+                    analytics: {{FIREBASE_ANALYTICS}},
+                    crashlytics: {{FIREBASE_CRASHLYTICS}},
+                    messaging: {{FIREBASE_MESSAGING}}
+                },
+                appsflyer: {
+                    enabled: {{APPSFLYER_ENABLED}},
+                    devKey: '{{APPSFLYER_DEV_KEY}}'
+                },
+                leadCapture: {
+                    enabled: {{LEAD_CAPTURE_ENABLED}},
+                    fields: {{LEAD_CAPTURE_FIELDS}},
+                    apiEndpoint: '{{LEAD_CAPTURE_API}}'
+                }
+            }
+        };
+
+        // Global variables
+        let isAppReady = false;
+        let leadCaptured = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        /**
+         * Initialize the application
+         */
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('Initializing mobile app...');
+            
+            try {
+                // Initialize Capacitor
+                await initializeCapacitor();
+                
+                // Initialize Firebase if enabled
+                if (APP_CONFIG.features.firebase.enabled) {
+                    await initializeFirebase();
+                }
+                
+                // Initialize Appsflyer if enabled
+                if (APP_CONFIG.features.appsflyer.enabled) {
+                    await initializeAppsflyer();
+                }
+                
+                // Load WebView
+                await loadWebView();
+                
+                // Show lead capture if enabled and not captured
+                if (APP_CONFIG.features.leadCapture.enabled && !leadCaptured) {
+                    setTimeout(() => showLeadCapture(), 3000);
+                }
+                
+                isAppReady = true;
+                console.log('App initialized successfully');
+                
+            } catch (error) {
+                console.error('App initialization error:', error);
+                showErrorScreen('Initialization failed');
+            }
+        });
+
+        /**
+         * Initialize Capacitor and device ready state
+         */
+        async function initializeCapacitor() {
+            return new Promise((resolve) => {
+                if (window.Capacitor) {
+                    const { Capacitor } = window;
+                    
+                    if (Capacitor.isNativePlatform()) {
+                        console.log('Running on native platform:', Capacitor.getPlatform());
+                        
+                        // Hide splash screen after loading
+                        setTimeout(() => {
+                            if (window.Capacitor.Plugins.SplashScreen) {
+                                window.Capacitor.Plugins.SplashScreen.hide();
+                            }
+                        }, 2000);
+                    }
+                }
+                resolve();
+            });
+        }
+
+        /**
+         * Initialize Firebase services
+         */
+        async function initializeFirebase() {
+            try {
+                // Firebase initialization code will be injected here
+                console.log('Firebase initialized');
+                
+                // Track app open event
+                if (APP_CONFIG.features.firebase.analytics) {
+                    trackEvent('app_open', {
+                        app_name: APP_CONFIG.appName,
+                        app_version: '1.0.0'
+                    });
+                }
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+            }
+        }
+
+        /**
+         * Initialize Appsflyer tracking
+         */
+        async function initializeAppsflyer() {
+            try {
+                if (window.Capacitor && window.Capacitor.Plugins.AppsFlyer) {
+                    const appsFlyer = window.Capacitor.Plugins.AppsFlyer;
+                    
+                    await appsFlyer.initSDK({
+                        devKey: APP_CONFIG.features.appsflyer.devKey,
+                        isDebug: false,
+                        onInstallConversionDataListener: true,
+                        onDeepLinkListener: true,
+                        timeToWaitForATTUserAuthorization: 60
+                    });
+                    
+                    console.log('Appsflyer initialized');
+                    
+                    // Track app launch
+                    appsFlyer.logEvent({
+                        eventName: 'af_app_opened',
+                        eventValues: {
+                            af_content_id: APP_CONFIG.packageId,
+                            af_content_type: 'app_launch'
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Appsflyer initialization error:', error);
+            }
+        }
+
+        /**
+         * Load the main website in WebView
+         */
+        async function loadWebView() {
+            const iframe = document.getElementById('webviewIframe');
+            const loadingScreen = document.getElementById('loadingScreen');
+            
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('WebView load timeout'));
+                }, 30000); // 30 second timeout
+                
+                iframe.onload = function() {
+                    clearTimeout(timeout);
+                    
+                    setTimeout(() => {
+                        loadingScreen.classList.add('hide');
+                        iframe.style.display = 'block';
+                        resolve();
+                    }, 1000);
+                };
+                
+                iframe.onerror = function() {
+                    clearTimeout(timeout);
+                    reject(new Error('WebView load error'));
+                };
+                
+                // Set the source to load the website
+                iframe.src = APP_CONFIG.websiteUrl;
+            });
+        }
+
+        /**
+         * Show error screen with retry option
+         */
+        function showErrorScreen(message) {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const errorScreen = document.getElementById('errorScreen');
+            const iframe = document.getElementById('webviewIframe');
+            
+            loadingScreen.style.display = 'none';
+            iframe.style.display = 'none';
+            errorScreen.style.display = 'flex';
+            
+            if (message) {
+                errorScreen.querySelector('.error-message').textContent = message;
+            }
+        }
+
+        /**
+         * Retry connection to website
+         */
+        async function retryConnection() {
+            if (retryCount >= maxRetries) {
+                showErrorScreen('Maximum retry attempts reached. Please restart the app.');
+                return;
+            }
+            
+            retryCount++;
+            
+            const errorScreen = document.getElementById('errorScreen');
+            const loadingScreen = document.getElementById('loadingScreen');
+            
+            errorScreen.style.display = 'none';
+            loadingScreen.style.display = 'flex';
+            loadingScreen.classList.remove('hide');
+            
+            try {
+                await loadWebView();
+            } catch (error) {
+                console.error('Retry failed:', error);
+                showErrorScreen('Connection failed. Please check your internet connection.');
+            }
+        }
+
+        /**
+         * Show lead capture modal
+         */
+        function showLeadCapture() {
+            if (leadCaptured || !APP_CONFIG.features.leadCapture.enabled) {
+                return;
+            }
+            
+            const modal = document.getElementById('leadCaptureModal');
+            const fieldsContainer = document.getElementById('leadCaptureFields');
+            
+            // Generate form fields based on configuration
+            fieldsContainer.innerHTML = '';
+            APP_CONFIG.features.leadCapture.fields.forEach(field => {
+                const fieldHtml = `
+                    <div class="form-field">
+                        <label class="form-label" for="${field.name}">${field.label}${field.required ? ' *' : ''}</label>
+                        <input 
+                            type="${field.type}" 
+                            id="${field.name}" 
+                            name="${field.name}" 
+                            class="form-input" 
+                            ${field.required ? 'required' : ''}
+                            placeholder="Enter your ${field.label.toLowerCase()}"
+                        >
+                    </div>
+                `;
+                fieldsContainer.innerHTML += fieldHtml;
+            });
+            
+            modal.style.display = 'flex';
+            
+            // Track lead capture shown
+            if (APP_CONFIG.features.firebase.analytics) {
+                trackEvent('lead_capture_shown', {
+                    app_name: APP_CONFIG.appName
+                });
+            }
+        }
+
+        /**
+         * Close lead capture modal
+         */
+        function closeLeadCapture() {
+            const modal = document.getElementById('leadCaptureModal');
+            modal.style.display = 'none';
+        }
+
+        /**
+         * Submit lead capture form
+         */
+        async function submitLeadCapture(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const leadData = {};
+            
+            // Collect form data
+            for (const [key, value] of formData.entries()) {
+                leadData[key] = value;
+            }
+            
+            // Add device and app information
+            leadData.appName = APP_CONFIG.appName;
+            leadData.packageId = APP_CONFIG.packageId;
+            leadData.timestamp = new Date().toISOString();
+            leadData.source = 'app_launch';
+            
+            // Add device info if available
+            if (window.Capacitor && window.Capacitor.Plugins.Device) {
+                try {
+                    const deviceInfo = await window.Capacitor.Plugins.Device.getInfo();
+                    leadData.deviceInfo = {
+                        platform: deviceInfo.platform,
+                        model: deviceInfo.model,
+                        version: deviceInfo.osVersion,
+                        manufacturer: deviceInfo.manufacturer
+                    };
+                } catch (error) {
+                    console.error('Error getting device info:', error);
+                }
+            }
+            
+            try {
+                // Submit to API endpoint
+                if (APP_CONFIG.features.leadCapture.apiEndpoint) {
+                    const response = await fetch(APP_CONFIG.features.leadCapture.apiEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(leadData)
+                    });
+                    
+                    if (response.ok) {
+                        console.log('Lead captured successfully');
+                        leadCaptured = true;
+                        localStorage.setItem('leadCaptured', 'true');
+                        closeLeadCapture();
+                        
+                        // Track successful lead capture
+                        if (APP_CONFIG.features.firebase.analytics) {
+                            trackEvent('lead_captured', {
+                                app_name: APP_CONFIG.appName,
+                                lead_source: 'app_launch'
+                            });
+                        }
+                        
+                        // Track with Appsflyer
+                        if (APP_CONFIG.features.appsflyer.enabled && window.Capacitor && window.Capacitor.Plugins.AppsFlyer) {
+                            window.Capacitor.Plugins.AppsFlyer.logEvent({
+                                eventName: 'af_lead_captured',
+                                eventValues: {
+                                    af_content_id: APP_CONFIG.packageId,
+                                    af_content_type: 'lead_capture'
+                                }
+                            });
+                        }
+                        
+                        // Show success message
+                        if (window.Capacitor && window.Capacitor.Plugins.Toast) {
+                            window.Capacitor.Plugins.Toast.show({
+                                text: 'Thank you! Your information has been saved.',
+                                duration: 'short',
+                                position: 'bottom'
+                            });
+                        }
+                    } else {
+                        throw new Error('Failed to submit lead data');
+                    }
+                }
+            } catch (error) {
+                console.error('Lead capture error:', error);
+                
+                // Show error message
+                if (window.Capacitor && window.Capacitor.Plugins.Toast) {
+                    window.Capacitor.Plugins.Toast.show({
+                        text: 'Error saving information. Please try again.',
+                        duration: 'short',
+                        position: 'bottom'
+                    });
+                }
+            }
+        }
+
+        /**
+         * Track Firebase Analytics event
+         */
+        function trackEvent(eventName, parameters) {
+            if (APP_CONFIG.features.firebase.analytics && window.gtag) {
+                window.gtag('event', eventName, parameters);
+            }
+        }
+
+        /**
+         * Handle app state changes
+         */
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // App went to background
+                if (APP_CONFIG.features.firebase.analytics) {
+                    trackEvent('app_background', {
+                        app_name: APP_CONFIG.appName
+                    });
+                }
+            } else {
+                // App came to foreground
+                if (APP_CONFIG.features.firebase.analytics) {
+                    trackEvent('app_foreground', {
+                        app_name: APP_CONFIG.appName
+                    });
+                }
+            }
+        });
+
+        // Check if lead was already captured
+        if (localStorage.getItem('leadCaptured')) {
+            leadCaptured = true;
+        }
+
+        // Handle back button on Android
+        if (window.Capacitor && window.Capacitor.Plugins.App) {
+            window.Capacitor.Plugins.App.addListener('backButton', () => {
+                // Handle back button - you can customize this behavior
+                const iframe = document.getElementById('webviewIframe');
+                if (iframe.contentWindow && iframe.contentWindow.history.length > 1) {
+                    iframe.contentWindow.history.back();
+                } else {
+                    // Exit app
+                    window.Capacitor.Plugins.App.exitApp();
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

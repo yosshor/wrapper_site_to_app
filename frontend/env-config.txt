@@ -1,0 +1,23 @@
+# Environment Configuration for Mobile App Generator Frontend
+
+Copy this content to create your own `.env.local` file in the frontend/ directory:
+
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+
+# App Configuration
+NEXT_PUBLIC_APP_NAME=Mobile App Generator
+NEXT_PUBLIC_APP_VERSION=1.0.0
+
+# Firebase Configuration (Optional - Configure these for client-side Firebase features)
+# Get this from your Firebase project settings -> General -> Your apps -> Web app config
+# NEXT_PUBLIC_FIREBASE_CONFIG={"apiKey":"your-api-key","authDomain":"your-project.firebaseapp.com","projectId":"your-project-id","storageBucket":"your-project.appspot.com","messagingSenderId":"123456789","appId":"1:123456789:web:abcdef"}
+
+# Analytics & Tracking (Optional)
+# NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
+
+## Instructions:
+1. Copy the content above to a new file named `.env.local` in the frontend/ directory
+2. The NEXT_PUBLIC_API_URL should match your backend server URL
+3. Configure Firebase config object if using Firebase features on the client
+4. All NEXT_PUBLIC_ variables are exposed to the browser, so don't put secrets here 

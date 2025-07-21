@@ -1,0 +1,47 @@
+# Environment Configuration for Mobile App Generator Backend
+
+Copy this content to create your own `.env` file in the backend/ directory:
+
+# Database Configuration
+MONGODB_URI=mongodb://admin:password@localhost:27017/mobile_app_generator?authSource=admin
+REDIS_URL=redis://localhost:6379
+
+# Authentication & Security
+JWT_SECRET=your-super-secure-jwt-secret-key-change-this-in-production
+JWT_EXPIRES_IN=7d
+BCRYPT_ROUNDS=12
+
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:3000
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Build System
+BUILD_QUEUE_ENABLED=true
+MAX_CONCURRENT_BUILDS=3
+BUILD_TIMEOUT_MINUTES=30
+
+# Firebase Admin SDK (Optional - Configure these for Firebase features)
+# Get these from your Firebase project settings -> Service accounts
+# FIREBASE_PROJECT_ID=your-project-id
+# FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
+
+# Google Sheets API (Optional - For lead export feature)
+# GOOGLE_SHEETS_CREDENTIALS_PATH=./google-sheets-credentials.json
+# GOOGLE_SHEETS_SPREADSHEET_ID=your-spreadsheet-id
+
+# AppsFlyer (Optional - For attribution tracking)
+# APPSFLYER_API_TOKEN=your-appsflyer-api-token
+
+## Instructions:
+1. Copy the content above to a new file named `.env` in the backend/ directory
+2. Update the JWT_SECRET with a strong random string
+3. Configure optional services (Firebase, Google Sheets, AppsFlyer) as needed
+4. The default MongoDB and Redis URLs work with the Docker Compose setup 
