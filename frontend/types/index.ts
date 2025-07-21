@@ -210,7 +210,9 @@ export interface ApiResponse<T = any> {
 
 export interface PaginatedResponse<T = any> {
   success: boolean;
-  data: T[];
+  data: {
+    apps: T[];
+  };
   pagination: {
     page: number;
     limit: number;

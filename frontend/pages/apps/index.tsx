@@ -276,10 +276,10 @@ export default function AppsDashboard() {
                 </Card>
               ))}
             </div>
-          ) : appsData?.data?.length ? (
+            ) : appsData?.data?.apps?.length ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                {appsData.data.map((app: App) => (
+                {appsData.data.apps.map((app: App) => (
                   <Card key={app.id} className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex justify-between items-start mb-4">
                       <div>

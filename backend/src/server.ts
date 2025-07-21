@@ -160,7 +160,7 @@ class App {
     apiRouter.use('/auth', authRouter);
     apiRouter.use('/apps', appsRouter);
     // apiRouter.use('/builds', buildsRouter);
-    // apiRouter.use('/dashboard', dashboardRouter);
+    apiRouter.use('/dashboard', dashboardRouter);
   
     // // Mount all API routes under /api
     this.app.use('/api', apiRouter);
@@ -176,7 +176,6 @@ class App {
     });
    
     this.app.use('/builds', buildsRouter);
-    this.app.use('/dashboard', dashboardRouter);
   
     // 404 handler for undefined routes
     this.app.all('*', (req: Request, res: Response) => {
