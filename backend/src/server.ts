@@ -154,26 +154,16 @@ class App {
    */
   private initializeRoutes(): void {
     // // API routes with /api prefix
-    // const apiRouter = Router();
+    const apiRouter = Router();
   
-    // // Health check endpoint
-    // apiRouter.get('/health', (req: Request, res: Response) => {
-    //   res.status(200).json({
-    //     success: true,
-    //     message: 'Mobile App Generator API is running',
-    //     timestamp: new Date().toISOString(),
-    //     version: '1.0.0',
-    //   });
-    // });
-  
-    // // Mount other API routes
-    // apiRouter.use('/auth', authRouter);
-    // apiRouter.use('/apps', appsRouter);
+    // Mount other API routes
+    apiRouter.use('/auth', authRouter);
+    apiRouter.use('/apps', appsRouter);
     // apiRouter.use('/builds', buildsRouter);
     // apiRouter.use('/dashboard', dashboardRouter);
   
     // // Mount all API routes under /api
-    // this.app.use('/api', apiRouter);
+    this.app.use('/api', apiRouter);
     
     // Also mount routes without /api prefix for flexibility
     this.app.use('/health', (req: Request, res: Response) => {
@@ -184,8 +174,7 @@ class App {
         version: '1.0.0',
       });
     });
-    this.app.use('/auth', authRouter);
-    this.app.use('/api/apps', appsRouter);
+   
     this.app.use('/builds', buildsRouter);
     this.app.use('/dashboard', dashboardRouter);
   
