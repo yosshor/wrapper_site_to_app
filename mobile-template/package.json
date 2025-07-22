@@ -4,17 +4,13 @@
   "description": "Capacitor-based mobile app template for website wrapping with Firebase and Appsflyer integration",
   "main": "index.js",
   "scripts": {
-    "build": "npm run copy && capacitor sync",
-    "copy": "mkdir -p www && cp -r src/* www/",
-    "dev": "npm run build && capacitor run android",
-    "dev:ios": "npm run build && capacitor run ios",
-    "android": "capacitor run android",
-    "ios": "capacitor run ios",
-    "sync": "capacitor sync",
+    "build": "npm run copy && npm run sync:android",
+    "copy": "if not exist www mkdir www && xcopy /E /I src www",
+    "sync:android": "cap sync android",
+    "android:dev": "cap run android",
+    "android:build": "cap build android",
     "clean": "rimraf www dist node_modules/.capacitor",
-    "prebuild": "rimraf www",
-    "build:android": "npm run build && capacitor build android",
-    "build:ios": "npm run build && capacitor build ios"
+    "prebuild": "rimraf www"
   },
   "dependencies": {
     "@capacitor/android": "^5.6.0",
@@ -23,24 +19,21 @@
     "@capacitor/camera": "^5.0.7",
     "@capacitor/core": "^5.6.0",
     "@capacitor/device": "^5.0.6",
-    "@capacitor/filesystem": "^5.1.4",
+    "@capacitor/dialog": "^5.0.6",
+    "@capacitor/filesystem": "^5.2.1",
     "@capacitor/geolocation": "^5.0.6",
     "@capacitor/haptics": "^5.0.6",
-    "@capacitor/ios": "^5.6.0",
     "@capacitor/keyboard": "^5.0.6",
     "@capacitor/network": "^5.0.6",
     "@capacitor/preferences": "^5.0.6",
     "@capacitor/push-notifications": "^5.1.0",
     "@capacitor/splash-screen": "^5.0.6",
     "@capacitor/status-bar": "^5.0.6",
-    "@capacitor/toast": "^5.0.6",
-    "firebase": "^10.7.1",
-    "appsflyer-capacitor-plugin": "6.14.3"
+    "@capacitor/toast": "^5.0.6"
   },
   "devDependencies": {
     "@capacitor/cli": "^5.6.0",
-    "rimraf": "^5.0.5",
-    "typescript": "^5.3.3"
+    "rimraf": "^5.0.5"
   },
   "keywords": [
     "capacitor",

@@ -31,11 +31,6 @@ export class BuildService {
 
   async startBuild(buildId: string): Promise<void> {
     try {
-      // First verify template exists
-      if (!await fs.pathExists(this.TEMPLATE_DIR)) {
-        throw new Error(`Template directory not found at: ${this.TEMPLATE_DIR}`);
-      }
-
       const build = await Build.findById(buildId).populate('appId');
       if (!build) throw new Error('Build not found');
 
@@ -48,62 +43,90 @@ export class BuildService {
 
       // Copy template
       await fs.copy(this.TEMPLATE_DIR, buildDir);
-      console.log('Template copied to:', buildDir);
+      await this.updateBuildStatus(buildId, 'in_progress', 'Template copied successfully');
 
       // Update Capacitor config
       await this.updateCapacitorConfig(buildDir, {
         appId: app.androidPackageId,
         appName: app.name,
         webDir: 'www',
-        serverUrl: app.websiteUrl
+        serverUrl: app.websiteUrl,
+        iosAppId: app.iosPackageId || app.androidPackageId
       });
+      await this.updateBuildStatus(buildId, 'in_progress', 'Configuration updated');
 
       // Install dependencies
       await this.updateBuildStatus(buildId, 'in_progress', 'Installing dependencies');
-      console.log('Installing dependencies in:', buildDir);
-      await execAsync('npm install', { cwd: buildDir });
+      await execAsync('npm install --legacy-peer-deps', { cwd: buildDir });
 
-      // Build web assets
+      // Build web assets and sync platforms
       await this.updateBuildStatus(buildId, 'in_progress', 'Building web assets');
-      console.log('Building web assets in:', buildDir);
       await execAsync('npm run build', { cwd: buildDir });
 
-      // Sync Capacitor
-      await this.updateBuildStatus(buildId, 'in_progress', 'Syncing Capacitor');
-      console.log('Syncing Capacitor in:', buildDir);
-      await execAsync('npx cap sync android', { cwd: buildDir });
-
       // Build Android APK
-      await this.updateBuildStatus(buildId, 'in_progress', 'Building Android APK');
-      const androidDir = path.join(buildDir, 'android');
-      console.log('Building APK in:', androidDir);
-      
-      // Run Gradle build
-      await execAsync('./gradlew assembleRelease', { 
-        cwd: androidDir,
-        env: {
-          ...process.env,
-          ANDROID_HOME: process.env.ANDROID_SDK_ROOT || process.env.ANDROID_HOME
+      let androidApkPath: string | null = null;
+      let iosIpaPath: string | null = null;
+
+      try {
+        await this.updateBuildStatus(buildId, 'in_progress', 'Building Android APK');
+        androidApkPath = await this.buildAndroid(buildDir);
+        await this.updateBuildStatus(buildId, 'in_progress', 'Android APK built successfully');
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Android build failed:', errorMessage);
+        await this.updateBuildStatus(buildId, 'in_progress', `Android build failed: ${errorMessage}`);
+      }
+
+      // Build iOS IPA if on macOS
+      if (process.platform === 'darwin') {
+        try {
+          await this.updateBuildStatus(buildId, 'in_progress', 'Building iOS IPA');
+          iosIpaPath = await this.buildIOS(buildDir);
+          await this.updateBuildStatus(buildId, 'in_progress', 'iOS IPA built successfully');
+        } catch (error) {
+          await this.updateBuildStatus(buildId, 'in_progress', `iOS build failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      } else {
+        await this.updateBuildStatus(buildId, 'in_progress', 'Skipping iOS build (requires macOS)');
+      }
+
+      // Check if at least one build succeeded (on Windows, we only expect Android to succeed)
+      if (!androidApkPath) {
+        if (process.platform === 'darwin' && !iosIpaPath) {
+          throw new Error('Both Android and iOS builds failed');
+        } else if (process.platform !== 'darwin') {
+          throw new Error('Android build failed');
+        }
+      }
+
+      // Copy artifacts to downloads
+      const buildFiles: { android?: string; ios?: string } = {};
+
+      if (androidApkPath) {
+        const apkOutputPath = path.join(this.OUTPUT_DIR, `${buildId}.apk`);
+        await fs.copy(androidApkPath, apkOutputPath);
+        buildFiles.android = `/downloads/${buildId}.apk`;
+      }
+
+      if (iosIpaPath) {
+        const ipaOutputPath = path.join(this.OUTPUT_DIR, `${buildId}.ipa`);
+        await fs.copy(iosIpaPath, ipaOutputPath);
+        buildFiles.ios = `/downloads/${buildId}.ipa`;
+      }
+
+      // Update build with success
+      await Build.findByIdAndUpdate(buildId, {
+        status: 'completed',
+        buildFiles,
+        completedAt: new Date(),
+        $push: {
+          logs: {
+            timestamp: new Date(),
+            message: 'Build completed successfully',
+            level: 'info'
+          }
         }
       });
-
-      // Copy APK to downloads
-      const apkPath = path.join(androidDir, 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
-      const outputPath = path.join(this.OUTPUT_DIR, `${buildId}.apk`);
-      
-      if (await fs.pathExists(apkPath)) {
-        await fs.copy(apkPath, outputPath);
-        console.log('APK copied to:', outputPath);
-
-        // Update build with success
-        await this.updateBuildStatus(buildId, 'completed', 'Build completed successfully');
-        await Build.findByIdAndUpdate(buildId, {
-          buildUrl: `/downloads/${buildId}.apk`,
-          completedAt: new Date()
-        });
-      } else {
-        throw new Error('APK file not found after build');
-      }
 
       // Cleanup
       await fs.remove(buildDir);
@@ -112,7 +135,6 @@ export class BuildService {
       console.error('Build failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      // Update build with failure status and detailed error
       await Build.findByIdAndUpdate(buildId, {
         status: 'failed',
         error: errorMessage,
@@ -126,8 +148,77 @@ export class BuildService {
         }
       });
 
-      throw error; // Re-throw to be caught by the API route
+      throw error;
     }
+  }
+
+  private async buildAndroid(buildDir: string): Promise<string> {
+    try {
+      // First sync the project
+      await execAsync('npx cap sync android', { cwd: buildDir });
+      
+      // Build debug APK (more reliable than release)
+      const gradlewCmd = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
+      await execAsync(`cd android && ${gradlewCmd} assembleDebug`, { 
+        cwd: buildDir,
+        env: {
+          ...process.env,
+          ANDROID_HOME: process.env.ANDROID_SDK_ROOT || process.env.ANDROID_HOME
+        }
+      });
+
+      // Check for debug APK first, then release
+      const possibleApkPaths = [
+        path.join(buildDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk'),
+        path.join(buildDir, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk'),
+        path.join(buildDir, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release-unsigned.apk')
+      ];
+
+      for (const apkPath of possibleApkPaths) {
+        if (await fs.pathExists(apkPath)) {
+          return apkPath;
+        }
+      }
+
+      // If no APK found, list the contents to debug
+      const outputDir = path.join(buildDir, 'android', 'app', 'build', 'outputs', 'apk');
+      if (await fs.pathExists(outputDir)) {
+        try {
+          const contents = await fs.readdir(outputDir);
+          const debugInfo = contents.join(', ');
+          throw new Error(`APK file not found. Available in outputs/apk: ${debugInfo}`);
+        } catch (readError) {
+          throw new Error('APK file not found and could not read output directory');
+        }
+      } else {
+        throw new Error('APK output directory not found after build');
+      }
+    } catch (error: any) {
+      // Log the full error for debugging
+      console.error('Android build error:', error);
+      throw new Error(`Android build failed: ${error.message || error}`);
+    }
+  }
+
+  private async buildIOS(buildDir: string): Promise<string> {
+    // First sync the project
+    await execAsync('npx cap sync ios', { cwd: buildDir });
+    
+    // Then build using Capacitor
+    await execAsync('npm run ios:build', { 
+      cwd: buildDir,
+      env: {
+        ...process.env,
+        DEVELOPER_DIR: process.env.XCODE_PATH // Optional, for specific Xcode version
+      }
+    });
+
+    const ipaPath = path.join(buildDir, 'ios', 'App', 'build', 'App.ipa');
+    if (!await fs.pathExists(ipaPath)) {
+      throw new Error('IPA file not found after build');
+    }
+
+    return ipaPath;
   }
 
   private async updateCapacitorConfig(buildDir: string, config: {
@@ -135,6 +226,7 @@ export class BuildService {
     appName: string;
     webDir: string;
     serverUrl: string;
+    iosAppId: string;
   }): Promise<void> {
     // Update capacitor.config.ts
     const configPath = path.join(buildDir, 'capacitor.config.ts');
@@ -144,6 +236,18 @@ export class BuildService {
       .replace(/appId: ['"].*['"]/, `appId: '${config.appId}'`)
       .replace(/appName: ['"].*['"]/, `appName: '${config.appName}'`)
       .replace(/webDir: ['"].*['"]/, `webDir: '${config.webDir}'`);
+
+    // Add iOS-specific configuration
+    if (!configContent.includes('ios:')) {
+      configContent = configContent.replace(
+        'export default {',
+        `export default {
+  ios: {
+    scheme: '${config.appName.replace(/\s+/g, '')}',
+    bundleId: '${config.iosAppId}'
+  },`
+      );
+    }
 
     await fs.writeFile(configPath, configContent);
 
@@ -158,14 +262,11 @@ export class BuildService {
     
     await fs.writeJson(packagePath, packageJson, { spaces: 2 });
 
-    // Update index.html with website URL
+    // Create or update index.html
     const srcDir = path.join(buildDir, 'src');
     await fs.ensureDir(srcDir);
     
-    const indexPath = path.join(srcDir, 'index.html');
-    if (!await fs.pathExists(indexPath)) {
-      // Create basic index.html if it doesn't exist
-      const indexContent = `
+    const indexContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -178,16 +279,8 @@ export class BuildService {
     <p>Redirecting to ${config.serverUrl}...</p>
 </body>
 </html>`;
-      await fs.writeFile(indexPath, indexContent);
-    } else {
-      // Update existing index.html
-      let indexContent = await fs.readFile(indexPath, 'utf8');
-      if (!indexContent.includes('meta http-equiv="refresh"')) {
-        indexContent = indexContent.replace('</head>', 
-          `    <meta http-equiv="refresh" content="0; url=${config.serverUrl}">\n</head>`);
-        await fs.writeFile(indexPath, indexContent);
-      }
-    }
+
+    await fs.writeFile(path.join(srcDir, 'index.html'), indexContent);
   }
 
   private async updateBuildStatus(buildId: string, status: string, message: string): Promise<void> {
@@ -197,7 +290,7 @@ export class BuildService {
         logs: {
           timestamp: new Date(),
           message,
-          level: status === 'failed' ? 'error' : 'info'
+          level: message.toLowerCase().includes('failed') ? 'error' : 'info'
         }
       }
     });
@@ -209,7 +302,7 @@ export class BuildService {
 
   async getDownloadUrl(buildId: string): Promise<string | null> {
     const build = await Build.findById(buildId);
-    return build?.buildUrl || null;
+    return build?.buildFiles?.android || build?.buildFiles?.ios || null;
   }
 }
 

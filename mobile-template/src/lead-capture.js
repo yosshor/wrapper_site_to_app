@@ -215,12 +215,6 @@ class LeadCaptureManager {
         success: true
       });
       
-      // Track with Appsflyer if enabled
-      this.trackAppsflyerEvent('af_lead_captured', {
-        af_content_id: leadData.packageId,
-        af_content_type: 'lead_capture'
-      });
-      
       console.log('Lead captured successfully');
       
     } catch (error) {
@@ -386,22 +380,6 @@ class LeadCaptureManager {
   trackEvent(eventName, parameters = {}) {
     if (window.trackEvent && typeof window.trackEvent === 'function') {
       window.trackEvent(eventName, parameters);
-    }
-  }
-
-  /**
-   * Track Appsflyer event
-   * @param {string} eventName - Event name
-   * @param {object} eventValues - Event values
-   */
-  trackAppsflyerEvent(eventName, eventValues = {}) {
-    if (window.Capacitor && window.Capacitor.Plugins.AppsFlyer) {
-      window.Capacitor.Plugins.AppsFlyer.logEvent({
-        eventName,
-        eventValues
-      }).catch(error => {
-        console.error('Appsflyer tracking error:', error);
-      });
     }
   }
 }

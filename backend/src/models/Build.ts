@@ -47,6 +47,10 @@ const buildSchema = new mongoose.Schema({
     level: { type: String, enum: ['info', 'warn', 'error'] }
   }],
   version: String,
+  buildFiles: {
+    android: String,
+    ios: String
+  },
 }, {
   timestamps: true
 });

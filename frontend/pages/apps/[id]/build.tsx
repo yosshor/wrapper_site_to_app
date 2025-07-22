@@ -35,6 +35,7 @@ export default function BuildApp() {
       enabled: !!id,
       onError: (err: any) => {
         showToast(err.response?.data?.error || 'Failed to load app', 'error');
+        console.error(err);
         router.push('/apps');
       }
     }
@@ -43,15 +44,25 @@ export default function BuildApp() {
   // Add this query to check build status
   const { data: buildStatus, isLoading: buildStatusLoading } = useQuery(
     ['build-status', buildId],
-    () => api.apps.getBuildStatus(id as string, buildId),
+    () => api.apps.getBuildStatus(id as string, buildId as string),
     {
       enabled: !!buildId,
       refetchInterval: (data) => {
+        const status = data?.data?.status;
+        console.log('Build status:', status, data);
         // Stop polling if build is completed or failed
-        if (data?.data?.status === 'completed' || data?.data?.status === 'failed') {
+        if (status === 'completed' || status === 'failed') {
           return false;
         }
-        return 5000; // Poll every 5 seconds while building
+        return 3000; // Poll every 3 seconds while building
+      },
+      onSuccess: (data) => {
+        const status = data?.data?.status;
+        if (status === 'completed') {
+          showToast('Build completed successfully!', 'success');
+        } else if (status === 'failed') {
+          showToast('Build failed. Check logs for details.', 'error');
+        }
       }
     }
   );
@@ -66,6 +77,7 @@ export default function BuildApp() {
       },
       onError: (error: any) => {
         const errorMessage = error.response?.data?.error?.message || 'Failed to start build';
+        console.error(error);
         showToast(errorMessage, 'error');
       }
     }
@@ -96,19 +108,50 @@ export default function BuildApp() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Status:</span>
-            <span className={`px-2 py-1 rounded-full text-sm ${
-              status === 'completed' ? 'bg-green-100 text-green-800' :
-              status === 'failed' ? 'bg-red-100 text-red-800' :
-              'bg-blue-100 text-blue-800'
-            }`}>
-              {status || 'pending'}
-            </span>
+            <div className="flex items-center space-x-2">
+              {/* Loading spinner for pending/in_progress status */}
+              {(status === 'pending' || status === 'in_progress') && (
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+              )}
+              
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                status === 'completed' ? 'bg-green-100 text-green-800' :
+                status === 'failed' ? 'bg-red-100 text-red-800' :
+                status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {status === 'pending' ? 'Initializing Build...' :
+                 status === 'in_progress' ? 'Building...' :
+                 status === 'completed' ? 'Build Complete' :
+                 status === 'failed' ? 'Build Failed' :
+                 'Pending'}
+              </span>
+            </div>
           </div>
+
+          {/* Progress indicator for in_progress */}
+          {status === 'in_progress' && (
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+            </div>
+          )}
 
           {/* Show error if build failed */}
           {status === 'failed' && error && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h4 className="text-sm font-medium text-red-800">Build Error</h4>
+                  <div className="mt-2 text-sm text-red-700">
+                    <p>{error}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -116,28 +159,49 @@ export default function BuildApp() {
           {buildStatus?.data?.logs?.length > 0 && (
             <div className="mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">Build Logs:</h4>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                {buildStatus.data.logs.map((log: any, index: number) => (
-                  <p key={index} className={`text-sm ${
-                    log.level === 'error' ? 'text-red-600' :
-                    log.level === 'warn' ? 'text-yellow-600' :
-                    'text-gray-600'
+              <div className="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
+                {buildStatus?.data?.logs?.map((log: any, index: number) => (
+                  <div key={index} className={`text-sm font-mono ${
+                    log.level === 'error' ? 'text-red-400' :
+                    log.level === 'warn' ? 'text-yellow-400' :
+                    'text-green-400'
                   }`}>
-                    {new Date(log.timestamp).toLocaleTimeString()}: {log.message}
-                  </p>
+                    <span className="text-gray-500 text-xs">
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </span>
+                    <span className="ml-2">{log.message}</span>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
           {/* Show download button only if build is completed */}
-          {status === 'completed' && buildStatus?.data?.buildUrl && (
-            <Button
-              onClick={() => window.location.href = buildStatus.data.buildUrl}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              Download APK
-            </Button>
+          {status === 'completed' && buildStatus?.data?.buildFiles && (
+            <div className="space-y-2">
+              {buildStatus.data.buildFiles.android && (
+                <Button
+                  onClick={() => window.location.href = buildStatus.data.buildFiles.android}
+                  className="w-full bg-green-600 hover:bg-green-700 flex items-center justify-center"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download Android APK
+                </Button>
+              )}
+              {buildStatus.data.buildFiles.ios && (
+                <Button
+                  onClick={() => window.location.href = buildStatus.data.buildFiles.ios}
+                  className="w-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download iOS IPA
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </Card>
@@ -276,11 +340,18 @@ export default function BuildApp() {
           <div className="mt-8 flex justify-end">
             <Button
               onClick={handleBuild}
-              disabled={buildMutation.isLoading}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center px-6 py-3"
+              disabled={buildMutation.isLoading || buildStatus?.data?.status === 'in_progress'}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
+              {(buildMutation.isLoading || buildStatus?.data?.status === 'in_progress') && (
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+              )}
               <RocketLaunchIcon className="h-5 w-5 mr-2" />
-              {buildMutation.isLoading ? 'Starting Build...' : 'Start Build'}
+              {buildMutation.isLoading 
+                ? 'Starting Build...' 
+                : buildStatus?.data?.status === 'in_progress' 
+                ? 'Building...' 
+                : 'Start Build'}
             </Button>
           </div>
           {renderBuildStatus()}

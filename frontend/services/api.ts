@@ -212,11 +212,16 @@ class ApiService {
      * @returns App data
      */
     get: async (appId: string): Promise<ApiResponse> => {
-      const response = await this.client.get(`/apps/${appId}`);
-      return response.data;
+      try { 
+        const response = await this.client.get(`/apps/${appId}`);
+        return response.data;
+      } catch (error) {
+        console.error('Error getting app:', error);
+        throw error;
+      }
     },
 
-    /**
+    /** 
      * Create new app
      * @param appData - App creation data
      * @returns Created app data
@@ -292,8 +297,15 @@ class ApiService {
     },
 
     getBuildStatus: async (appId: string, buildId: string): Promise<ApiResponse> => {
-      const response = await this.client.get(`/apps/${appId}/builds/${buildId}`);
-      return response.data;
+      console.log('Getting build status for appId:', appId, 'and buildId:', buildId);
+      try {
+        const response = await this.client.get(`/apps/${appId}/builds/${buildId}`);
+        return response.data;
+      } catch (error) {
+        console.error('Error getting build status:', error);
+        throw error;
+      }
+      
     },
 
     downloadBuild: async (appId: string, buildId: string): Promise<any> => {
