@@ -159,6 +159,16 @@ export default function AppDetail() {
                   <ArrowLeftIcon className="h-5 w-5 mr-2" />
                   Back to Apps
                 </Button>
+                
+                {/* Add this new Stats button */}
+                <Button
+                  onClick={() => router.push(`/apps/${app.id}/stats`)}
+                  className="bg-indigo-600 hover:bg-indigo-700 flex items-center"
+                >
+                  <ChartBarIcon className="h-5 w-5 mr-2" />
+                  Statistics
+                </Button>
+
                 <Button
                   onClick={() => router.push(`/apps/${app.id}/build`)}
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center"

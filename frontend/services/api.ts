@@ -278,12 +278,36 @@ class ApiService {
     getStats: async (appId: string): Promise<ApiResponse> => {
       const response = await this.client.get(`/apps/${appId}/stats`);
       return response.data;
-    }
+    },
+
+    /**
+     * Start a new build
+     * @param appId - App ID
+     * @param buildData - Build configuration data
+     * @returns Build response
+     */
+    build: async (appId: string, buildData: any): Promise<ApiResponse> => {
+      const response = await this.client.post(`/apps/${appId}/build`, buildData);
+      return response.data;
+    },
+
+    getBuildStatus: async (appId: string, buildId: string): Promise<ApiResponse> => {
+      const response = await this.client.get(`/apps/${appId}/builds/${buildId}`);
+      return response.data;
+    },
+
+    downloadBuild: async (appId: string, buildId: string): Promise<any> => {
+      const response = await this.client.get(`/apps/${appId}/builds/${buildId}/download`, {
+        responseType: 'blob'
+      });
+      return response;
+    },
   };
 
   // ============================================================================
   // BUILD MANAGEMENT METHODS
   // ============================================================================
+
 
   builds = {
     /**
@@ -337,7 +361,7 @@ class ApiService {
         responseType: 'blob',
       });
       return URL.createObjectURL(new Blob([response.data]));
-    }
+    },
   };
 
   // ============================================================================
@@ -362,3 +386,5 @@ class ApiService {
 // Create and export API service instance
 const apiService = new ApiService();
 export default apiService; 
+
+

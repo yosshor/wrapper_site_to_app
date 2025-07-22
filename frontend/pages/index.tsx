@@ -23,8 +23,8 @@ import {
   Play,
   Star,
 } from 'lucide-react';
-import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 /**
  * Home Page Component
@@ -168,7 +168,9 @@ export default function Home() {
               className="text-center"
             >
               <motion.h1
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6"
               >
                 Convert Websites to
@@ -178,7 +180,9 @@ export default function Home() {
               </motion.h1>
               
               <motion.p
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="text-xl text-gray-600 max-w-3xl mx-auto mb-10"
               >
                 Transform any website into a professional mobile application with Firebase integration, 
@@ -186,7 +190,9 @@ export default function Home() {
               </motion.p>
 
               <motion.div
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               >
                 <Link href="/auth/register">
@@ -204,7 +210,10 @@ export default function Home() {
 
               {/* Trust indicators */}
               <motion.div
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                variants={staggerChildren}
                 className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-16 text-sm text-gray-500"
               >
                 <div className="flex items-center">
@@ -235,13 +244,17 @@ export default function Home() {
               className="text-center mb-16"
             >
               <motion.h2
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4"
               >
                 Everything You Need
               </motion.h2>
               <motion.p
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="text-xl text-gray-600 max-w-2xl mx-auto"
               >
                 Powerful features to create professional mobile apps from your websites
@@ -256,7 +269,10 @@ export default function Home() {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
               {features.map((feature, index) => (
-                <motion.div key={index} variants={fadeInUp}>
+                <motion.div key={index} 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}>
                   <Card variant="elevated" padding="lg" className="h-full">
                     <div className="flex items-center mb-4">
                       <div className="p-3 bg-primary-100 rounded-lg mr-4">
@@ -287,13 +303,17 @@ export default function Home() {
               className="text-center mb-16"
             >
               <motion.h2
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4"
               >
                 How It Works
               </motion.h2>
               <motion.p
-                variants={fadeInUp}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="text-xl text-gray-600 max-w-2xl mx-auto"
               >
                 Simple 3-step process to convert your website into a mobile app
@@ -310,7 +330,9 @@ export default function Home() {
               {steps.map((step, index) => (
                 <motion.div
                   key={index}
-                  variants={fadeInUp}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
                   className="text-center relative"
                 >
                   {/* Step number */}
@@ -338,7 +360,7 @@ export default function Home() {
               initial="initial"
               whileInView="animate"
               viewport={{ once: true }}
-              variants={fadeInUp}
+              variants={staggerChildren}
               className="text-center mt-16"
             >
               <Link href="/auth/register">
@@ -373,7 +395,7 @@ export default function Home() {
               </div>
               
               <p className="text-gray-500 text-sm">
-                © 2024 MobileGen. Built with ❤️ by YosShor
+                © 2025 MobileGen. Built with ❤️ by YosShor
               </p>
             </div>
           </div>

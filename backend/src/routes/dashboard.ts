@@ -14,7 +14,7 @@ import { Router } from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User';
 import App from '../models/App';
-import Build from '../models/Build';
+import { Build } from '../models/Build';
 import Lead from '../models/Lead';
 import { authenticateToken, requireRole } from '../middleware/auth';
 import { IAuthRequest } from '../types';
@@ -165,7 +165,7 @@ router.get('/activities', authenticateToken, requireRole('admin'), async (req: I
         .limit(limitNum)
         .select('status platform createdAt completedAt appId');
 
-      result.builds = builds.map(build => ({
+      result.builds = builds.map((build: any) => ({
         id: build._id,
         status: build.status,
         platform: build.platform,
@@ -414,7 +414,7 @@ router.get('/export/builds', authenticateToken, requireRole('admin'), async (req
       .select('status platform logs createdAt completedAt config')
       .sort({ createdAt: -1 });
 
-    const exportData = builds.map(build => ({
+    const exportData = builds.map((build: any) => ({
       buildId: build._id,
       status: build.status,
       platform: build.platform,

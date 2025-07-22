@@ -64,15 +64,18 @@ export default function AppsDashboard() {
    */
   const { data: appsData, isLoading, error } = useQuery<PaginatedResponse<App>>(
     ['apps', page, searchQuery, statusFilter],
-    () => api.apps.list({
-      page,
-      limit: 12,
+    () => api.apps.list({ 
+      page, 
+      limit: 12, 
       search: searchQuery || undefined,
       status: statusFilter !== 'all' ? statusFilter : undefined
     }),
     {
       keepPreviousData: true,
-      staleTime: 30000 // 30 seconds
+      staleTime: 30000, // 30 seconds
+      onSuccess: (data) => {
+        console.log('Apps data received:', data);
+      }
     }
   );
 

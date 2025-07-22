@@ -12,13 +12,44 @@ import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import fsExtra from 'fs-extra';
+import { exec } from 'child_process';
+import util from 'util';
 
 // Import models
 import App from '../models/App';
 import { Build } from '../models/Build';
+import Lead from '../models/Lead';
 
 // Import middleware and types
 import { authenticateToken, checkAppOwnership, IAuthRequest } from '../middleware/auth';
+import { buildService } from '../services/buildService';
+
+interface BuildTrend {
+  date: string;
+  total: number;
+  successful: number;
+}
+
+interface RecentBuild {
+  id: string;
+  status: string;
+  platform: string;
+  duration: number;
+  createdAt: Date;
+}
+
+interface RecentLead {
+  id: string;
+  source: string;
+  status: string;
+  createdAt: Date;
+}
+
+interface LeadTrend {
+  date: string;
+  count: number;
+}
 
 const router = Router();
 
@@ -31,7 +62,7 @@ router.post('/', authenticateToken, async (req: IAuthRequest, res: Response, nex
     const userId = req.user!._id.toString();
     const appData = req.body;
 
-    debugger;
+    // debugger;
     // Validate required fields
     const { name, websiteUrl, packageId, bundleId } = appData;
     
@@ -326,25 +357,122 @@ router.post('/:appId/toggle-status', authenticateToken, checkAppOwnership, async
 router.get('/:appId/stats', authenticateToken, checkAppOwnership, async (req: IAuthRequest, res: Response, next: NextFunction) => {
   try {
     const { appId } = req.params;
-
-    // This would typically aggregate data from builds, leads, etc.
-    // For now, returning placeholder data
+    
+    // Initialize enhanced stats object
     const stats = {
-      totalBuilds: 0,
-      successfulBuilds: 0,
-      failedBuilds: 0,
-      totalLeads: 0,
-      recentLeads: 0,
-      lastBuildDate: null,
-      appInstalls: 0,
-      activeUsers: 0
+      builds: {
+        total: 0,
+        successful: 0,
+        failed: 0,
+        lastBuildDate: new Date(),
+        recentBuilds: [] as RecentBuild[],
+        buildTrend: [] as BuildTrend[],
+        platforms: {
+          android: 0,
+          ios: 0
+        }
+      },
+      leads: {
+        total: 0,
+        recent: 0, // Last 7 days
+        bySource: {}, // Group by source
+        conversionRate: 0,
+        recentLeads: [] as RecentLead[], // Last 5 leads
+        leadTrend: [] as LeadTrend[], // Last 7 days trend
+      },
+      performance: {
+        totalInstalls: 0,
+        activeUsers: 0,
+        avgBuildTime: 0,
+        successRate: 0
+      }
     };
 
-    // TODO: Implement actual statistics aggregation
-    // const builds = await Build.find({ appId });
-    // const leads = await Lead.find({ appId });
+    // Get builds and leads with more details
+    const [builds, leads] = await Promise.all([
+      Build.find({ appId })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean(),
+      Lead.find({ appId })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean()
+    ]);
 
-    res.json(stats);
+    // Process build statistics
+    stats.builds.total = builds.length;
+    stats.builds.successful = builds.filter(b => b.status === 'completed').length;
+    stats.builds.failed = builds.filter(b => b.status === 'failed').length;
+    stats.builds.lastBuildDate = builds[0]?.createdAt || new Date();
+    stats.builds.recentBuilds = builds.slice(0, 5).map((b: any) => ({
+      id: b._id,
+      status: b.status,
+      platform: b.platform,
+      duration: b.buildDuration,
+      createdAt: b.createdAt
+    }));
+
+    // Calculate platform distribution
+    builds.forEach((build: any) => {
+      if (build.platform === 'android') stats.builds.platforms.android++;
+      if (build.platform === 'ios') stats.builds.platforms.ios++;
+    });
+
+    // Calculate build trend (last 7 days)
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      return date.toISOString().split('T')[0];
+    }).reverse();
+
+    stats.builds.buildTrend  = last7Days.map((date: any) => ({
+      date,
+      total: builds.filter(b => b.createdAt.toISOString().startsWith(date)).length,
+      successful: builds.filter(b => 
+        b.createdAt.toISOString().startsWith(date) && 
+        b.status === 'completed'
+      ).length
+    }));
+
+    // Process lead statistics
+    stats.leads.total = leads.length;
+    stats.leads.recent = leads.filter(l => 
+      new Date(l.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    ).length;
+
+    // Group leads by source
+    stats.leads.bySource = leads.reduce((acc: any, lead: any) => {
+      acc[lead.source] = (acc[lead.source] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Recent leads with details
+    stats.leads.recentLeads = leads.slice(0, 5).map((l: any) => ({
+      id: l._id,
+      source: l.source,
+      status: l.status,
+      createdAt: l.createdAt
+    }));
+
+    // Calculate lead trend (last 7 days)
+    stats.leads.leadTrend = last7Days.map((date: any) => ({
+      date,
+      count: leads.filter(l => l.createdAt.toISOString().startsWith(date)).length
+    }));
+
+    // Calculate performance metrics
+    stats.performance.totalInstalls = builds.reduce((sum: any, b: any) => sum + (b.installs || 0), 0);
+    stats.performance.activeUsers = leads.reduce((sum: any, l: any) => sum + (l.activeUsers || 0), 0);
+    stats.performance.avgBuildTime = builds.length ? 
+      builds.reduce((sum: any, b: any) => sum + (b.duration || 0), 0) / builds.length : 0;
+    stats.performance.successRate = builds.length ? 
+      (stats.builds.successful / stats.builds.total) * 100 : 0;
+
+    res.status(200).json({
+      success: true,
+      data: { stats }
+    });
 
   } catch (error) {
     next(error);
@@ -396,5 +524,93 @@ router.post('/:appId/duplicate', authenticateToken, checkAppOwnership, async (re
     next(error);
   }
 });
+
+/**
+ * Build an app
+ * POST /api/apps/:appId/build
+ */
+router.post('/:appId/build', authenticateToken, checkAppOwnership, async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { appId } = req.params;
+    const { platform, config } = req.body;
+
+    // Create new build
+    const build = new Build({
+      appId,
+      userId: req.user!._id,
+      platform,
+      status: 'pending',
+      configSnapshot: {
+        ...config,
+        buildTime: new Date(),
+        environment: process.env.NODE_ENV
+      },
+      startedAt: new Date()
+    });
+
+    await build.save();
+
+    // Start build process asynchronously
+    buildService.startBuild(build._id.toString())
+      .catch(error => {
+        console.error('Build process failed:', error);
+      });
+
+    // Return immediately with the build ID
+    res.status(200).json({
+      success: true,
+      message: 'Build started',
+      data: { buildId: build._id }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Add a new endpoint to check build status
+ */
+router.get('/:appId/builds/:buildId', authenticateToken, async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { buildId } = req.params;
+    const build = await Build.findById(buildId);
+
+    if (!build) {
+      res.status(404).json({ success: false, error: 'Build not found' });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { build }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Add endpoint to download APK
+ */
+router.get('/:appId/builds/:buildId/download', authenticateToken, async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { buildId } = req.params;
+    const build = await Build.findById(buildId);
+
+    if (!build || !build.buildUrl) {
+      res.status(404).json({ success: false, error: 'Build or APK not found' });
+      return;
+    }
+
+    res.download(build.buildUrl);
+
+  } catch (error) {
+    console.error('Build error:', error);
+    next(error);
+  }
+});
+
 
 export default router; 
