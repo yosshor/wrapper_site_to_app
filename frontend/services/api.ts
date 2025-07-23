@@ -305,7 +305,21 @@ class ApiService {
         console.error('Error getting build status:', error);
         throw error;
       }
-      
+    },
+
+    /**
+     * Get recent builds for an app
+     * @param appId - App ID
+     * @returns Recent builds data
+     */
+    getRecentBuilds: async (appId: string): Promise<ApiResponse> => {
+      try {
+        const response = await this.client.get(`/apps/${appId}/builds?limit=5`);
+        return response.data;
+      } catch (error) {
+        console.error('Error getting recent builds:', error);
+        throw error;
+      }
     },
 
     downloadBuild: async (appId: string, buildId: string): Promise<any> => {

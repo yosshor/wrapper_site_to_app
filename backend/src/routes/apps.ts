@@ -569,6 +569,49 @@ router.post('/:appId/build', authenticateToken, checkAppOwnership, async (req: I
 });
 
 /**
+ * Get builds list for an app
+ */
+router.get('/:appId/builds', authenticateToken, checkAppOwnership, async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { appId } = req.params;
+    const { limit = 10, page = 1 } = req.query;
+    
+    const limitNum = parseInt(limit as string);
+    const pageNum = parseInt(page as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get builds for this app, sorted by creation date (newest first)
+    const builds = await Build.find({ appId })
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip(skip)
+      .lean();
+
+    // Get total count for pagination
+    const total = await Build.countDocuments({ appId });
+
+    res.json({
+      success: true,
+      data: {
+        builds,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error getting builds:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get builds'
+    });
+  }
+});
+
+/**
  * Add a new endpoint to check build status
  */
 router.get('/:appId/builds/:buildId', authenticateToken, async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
