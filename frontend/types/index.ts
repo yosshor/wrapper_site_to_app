@@ -308,13 +308,57 @@ export interface ToastProps {
 
 // Statistics Types
 export interface DashboardStats {
+  totalUsers: number;
   totalApps: number;
   totalBuilds: number;
   totalLeads: number;
+  userGrowth: number;
+  appGrowth: number;
+  buildGrowth: number;
+  leadGrowth: number;
   successfulBuilds: number;
-  failedBuilds: number;
-  recentBuilds: Build[];
-  recentLeads: Lead[];
+  buildQueue: {
+    building: number;
+    queued: number;
+    completed: number;
+    failed: number;
+  };
+  dailyStats: {
+    newUsers: number;
+    newApps: number;
+    buildsStarted: number;
+    leadsCaptured: number;
+  };
+}
+
+export interface DashboardActivities {
+  builds?: Array<{
+    id: string;
+    status: string;
+    platform: string;
+    appName: string;
+    createdAt: string;
+    completedAt?: string;
+  }>;
+  leads?: Array<{
+    id: string;
+    email: string;
+    name: string;
+    phone: string;
+    appName: string;
+    deviceInfo: any;
+    source: string;
+    createdAt: string;
+  }>;
+  users?: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    isEmailVerified: boolean;
+    role: string;
+    createdAt: string;
+  }>;
 }
 
 // File Upload Types

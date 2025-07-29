@@ -43,9 +43,25 @@ export default function Login() {
   const loginMutation = useMutation(
     (credentials: LoginForm) => api.login(credentials.email, credentials.password),
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         showToast('Login successful!', 'success');
-        router.push('/apps');
+        
+        // Check if user is admin and redirect accordingly
+        const redirectTo = router.query.redirect as string;
+        const userRole = data?.data?.user?.role;
+        
+        console.log('Login successful:', { data, redirectTo, userRole });
+        
+        if (userRole === 'admin' && redirectTo?.includes('/admin')) {
+          console.log('Redirecting admin to:', redirectTo);
+          router.push(redirectTo);
+        } else if (redirectTo) {
+          console.log('Redirecting to:', redirectTo);
+          router.push(redirectTo);
+        } else {
+          console.log('Redirecting to default: /apps');
+          router.push('/apps');
+        }
       },
       onError: (error: any) => {
         showToast(error.response?.data?.error || 'Login failed', 'error');
@@ -86,6 +102,13 @@ export default function Login() {
               Sign up
             </Link>
           </p>
+          {router.query.redirect && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800 text-center">
+                🔐 You'll be redirected to: <strong>{router.query.redirect}</strong>
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">

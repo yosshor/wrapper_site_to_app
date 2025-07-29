@@ -120,13 +120,21 @@ class App {
     // CORS configuration
     this.app.use(
       cors({
-        origin:
-          process.env.FRONTEND_URL ||
-          "http://localhost:3000" ||
+        origin: [
+          "http://localhost:3000",
           "http://localhost:3001",
+          process.env.FRONTEND_URL
+        ].filter((origin): origin is string => Boolean(origin)),
         credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allowedHeaders: [
+          "Content-Type", 
+          "Authorization", 
+          "X-Requested-With",
+          "Accept",
+          "Origin"
+        ],
+        exposedHeaders: ["Content-Disposition"]
       })
     );
 
@@ -196,6 +204,19 @@ class App {
   private initializeRoutes(): void {
     // // API routes with /api prefix
     const apiRouter = Router();
+
+    // Health check endpoint
+    apiRouter.get("/health", (req: Request, res: Response) => {
+      res.json({
+        success: true,
+        message: "API is running",
+        timestamp: new Date().toISOString(),
+        cors: {
+          origin: process.env.FRONTEND_URL || "http://localhost:3000",
+          credentials: true
+        }
+      });
+    });
 
     // Mount other API routes
     apiRouter.use("/auth", authRouter);

@@ -264,6 +264,76 @@ router.get('/builds/:buildId/logs', authenticateToken, requireRole('admin'), asy
 });
 
 /**
+ * Get leads with pagination and filtering
+ * GET /api/dashboard/leads
+ * @param {string} type - Activity type (overview, builds, leads, users)
+ * @param {number} page - Page number
+ * @param {number} limit - Items per page
+ */
+router.get('/leads', authenticateToken, requireRole('admin'), async (req: IAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { type = 'overview', page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+    let query: any = {};
+    let sort: any = { createdAt: -1 };
+
+    // Apply filters based on type
+    if (type === 'recent') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      query.createdAt = { $gte: sevenDaysAgo };
+    }
+
+    // Get leads with pagination
+    const [leads, totalLeads] = await Promise.all([
+      Lead.find(query)
+        .populate('appId', 'name websiteUrl packageId')
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit as string))
+        .select('email name phone appId deviceInfo location source analytics createdAt'),
+      Lead.countDocuments(query)
+    ]);
+
+    // Format response
+    const formattedLeads = leads.map(lead => ({
+      id: lead._id,
+      email: lead.email,
+      name: lead.name,
+      phone: lead.phone,
+      appName: (lead.appId as any)?.name || 'Unknown App',
+      appUrl: (lead.appId as any)?.websiteUrl || '',
+      deviceInfo: lead.deviceInfo || {},
+      location: lead.location || {},
+      source: lead.source || 'direct',
+      analytics: (lead as any).analytics || {},
+      createdAt: lead.createdAt
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        leads: formattedLeads,
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total: totalLeads,
+          pages: Math.ceil(totalLeads / parseInt(limit as string))
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching leads:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch leads'
+    });
+  }
+});
+
+/**
  * Get lead details with analytics
  * GET /api/dashboard/leads/:leadId
  */

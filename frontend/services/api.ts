@@ -9,7 +9,7 @@
 
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import toast from 'react-hot-toast';
-import { ApiResponse, PaginatedResponse } from '@/types';
+import { ApiResponse, PaginatedResponse, DashboardStats, DashboardActivities } from '@/types';
 
 // API configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';  // Use direct backend URL
@@ -69,7 +69,7 @@ class ApiService {
    */
   private getAuthToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
+      return localStorage.getItem('token');
     }
     return null;
   }
@@ -80,7 +80,7 @@ class ApiService {
    */
   private setAuthToken(token: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
+      localStorage.setItem('token', token);
     }
   }
 
@@ -89,7 +89,7 @@ class ApiService {
    */
   private removeAuthToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
     }
   }
 
@@ -183,6 +183,20 @@ class ApiService {
       return response.data;
     } finally {
       this.removeAuthToken();
+    }
+  }
+
+  /**
+   * Get current user profile
+   * @returns User profile data
+   */
+  async getProfile(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/auth/profile');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting profile:', error);
+      throw error;
     }
   }
 
@@ -398,13 +412,21 @@ class ApiService {
    * Get dashboard statistics
    * @returns Dashboard stats
    */
-  async getDashboardStats(): Promise<ApiResponse> {
+  async getDashboardStats(): Promise<DashboardStats> {
     const response = await this.client.get('/dashboard/stats');
+    console.log('Dashboard stats response:', response.data);
     return response.data;
   }
 
   async getLeads(type: string, page: number, limit: number): Promise<ApiResponse> {
     const response = await this.client.get(`/dashboard/leads?type=${type}&page=${page}&limit=${limit}`);
+    console.log('Leads response:', response.data);
+    return response.data;
+  }
+
+  async getActivities(type: string, limit: number = 10): Promise<DashboardActivities> {
+    const response = await this.client.get(`/dashboard/activities?type=${type}&limit=${limit}`);
+    console.log('Activities response:', response.data);
     return response.data;
   }
 }
