@@ -237,12 +237,20 @@ class ApiService {
 
     /** 
      * Create new app
-     * @param appData - App creation data
+     * @param appData - App creation data (can be FormData for file uploads)
      * @returns Created app data
      */
     create: async (appData: any): Promise<ApiResponse> => {
       console.log('Creating app with data:', appData);
-      const response = await this.client.post('/apps', appData);
+      
+      // Handle FormData for file uploads
+      const config = appData instanceof FormData ? {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      } : {};
+      
+      const response = await this.client.post('/apps', appData, config);
       console.log('Create app response:', response.data);
       return response.data;
     },

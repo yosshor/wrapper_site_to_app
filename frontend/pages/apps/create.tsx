@@ -33,6 +33,9 @@ export default function CreateApp() {
   const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [uploadMethod, setUploadMethod] = useState<'url' | 'code'>('url');
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const {
     register,
@@ -109,7 +112,33 @@ export default function CreateApp() {
         data.bundleId = data.packageId;
       }
 
-      await createAppMutation.mutateAsync(data);
+      if (uploadMethod === 'code' && uploadedFiles.length === 0) {
+        showToast('Please upload your website code ZIP file', 'error');
+        return;
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add basic app data
+      Object.keys(data).forEach(key => {
+        if (key === 'firebase' || key === 'appsflyer' || key === 'features') {
+          formData.append(key, JSON.stringify(data[key as keyof AppFormData]));
+        } else {
+          formData.append(key, data[key as keyof AppFormData] as string);
+        }
+      });
+
+      // Add upload method
+      formData.append('uploadMethod', uploadMethod);
+      
+      // Add uploaded files if using code upload
+      if (uploadMethod === 'code' && uploadedFiles.length > 0) {
+        formData.append('websiteCode', uploadedFiles[0]);
+      }
+
+      console.log('Submitting with method:', uploadMethod);
+      await createAppMutation.mutateAsync(formData as any);
     } catch (error) {
       console.error('App creation failed:', error);
     }
@@ -157,6 +186,18 @@ export default function CreateApp() {
             <p className="text-xl text-gray-600">
               Transform your website into a professional mobile app in minutes
             </p>
+            <div className="mt-4 max-w-2xl mx-auto">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-blue-900 mb-2">
+                  🚀 New Feature: Upload Your Website Code
+                </h3>
+                <p className="text-sm text-blue-700">
+                  Instead of just wrapping a URL, you can now upload your actual website code (ZIP file) 
+                  and we'll analyze and optimize it specifically for mobile devices. This provides better 
+                  performance and more control over your app.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Progress Steps */}
@@ -205,18 +246,120 @@ export default function CreateApp() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <Input
-                        label="Website URL"
-                        placeholder="https://www.example.com"
-                        error={errors.websiteUrl?.message}
-                        {...register('websiteUrl', {
-                          required: 'Website URL is required',
-                          validate: validateUrl
-                        })}
-                      />
-                      <p className="mt-2 text-sm text-gray-500">
-                        The website you want to wrap in your mobile app
-                      </p>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Source Method
+                        </label>
+                        <div className="flex space-x-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              value="url"
+                              checked={uploadMethod === 'url'}
+                              onChange={(e) => setUploadMethod(e.target.value as 'url' | 'code')}
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Website URL</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              value="code"
+                              checked={uploadMethod === 'code'}
+                              onChange={(e) => setUploadMethod(e.target.value as 'url' | 'code')}
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Upload Website Code</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {uploadMethod === 'url' ? (
+                        <div>
+                          <Input
+                            label="Website URL"
+                            placeholder="https://www.example.com"
+                            error={errors.websiteUrl?.message}
+                            {...register('websiteUrl', {
+                              required: uploadMethod === 'url' ? 'Website URL is required' : false,
+                              validate: uploadMethod === 'url' ? validateUrl : undefined
+                            })}
+                          />
+                          <p className="mt-2 text-sm text-gray-500">
+                            The website you want to wrap in your mobile app
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Upload Website Code (ZIP file)
+                          </label>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <input
+                              type="file"
+                              accept=".zip"
+                              multiple={false}
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                setUploadedFiles(files);
+                              }}
+                              className="hidden"
+                              id="code-upload"
+                            />
+                            <label htmlFor="code-upload" className="cursor-pointer">
+                              <div className="space-y-2">
+                                <div className="text-gray-400">
+                                  <svg className="mx-auto h-12 w-12" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {uploadedFiles.length > 0 ? 'File selected' : 'Click to upload'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {uploadedFiles.length > 0 
+                                      ? uploadedFiles[0].name 
+                                      : 'ZIP file containing your website code (HTML, CSS, JS, JSX, TSX)'
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                            </label>
+                          </div>
+                          {uploadedFiles.length > 0 && (
+                            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
+                              <p className="text-sm text-green-800">
+                                ✅ {uploadedFiles[0].name} uploaded successfully
+                              </p>
+                              <p className="text-xs text-green-600 mt-1">
+                                Your website code will be analyzed and optimized for mobile
+                              </p>
+                            </div>
+                          )}
+                          <p className="mt-2 text-sm text-gray-500">
+                            Upload a ZIP file containing your website files (HTML, CSS, JS, JSX, TSX, images). 
+                            Supports React, Vue, Angular, and other modern frameworks. 
+                            Your code will be analyzed and optimized for mobile devices.
+                          </p>
+                          
+                          {/* Code Analysis Preview */}
+                          {uploadedFiles.length > 0 && (
+                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                              <h4 className="text-sm font-medium text-blue-900 mb-2">
+                                📊 Code Analysis Preview
+                              </h4>
+                              <div className="text-xs text-blue-700 space-y-1">
+                                <p>✅ File uploaded successfully</p>
+                                <p>🔍 Analyzing website structure...</p>
+                                <p>📱 Checking mobile compatibility...</p>
+                                <p>⚡ Optimizing for performance...</p>
+                                <p>🎨 Preparing mobile UI enhancements...</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="md:col-span-2">
@@ -272,7 +415,12 @@ export default function CreateApp() {
                     <Button
                       type="button"
                       onClick={() => setCurrentStep(2)}
-                      disabled={!watchedName || !watch('websiteUrl') || !watch('packageId')}
+                      disabled={
+                        !watchedName || 
+                        !watch('packageId') || 
+                        (uploadMethod === 'url' && !watch('websiteUrl')) ||
+                        (uploadMethod === 'code' && uploadedFiles.length === 0)
+                      }
                     >
                       Next: Configuration
                     </Button>

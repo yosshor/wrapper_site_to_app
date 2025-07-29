@@ -51,26 +51,278 @@ interface LeadTrend {
   count: number;
 }
 
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads', 'website-code');
+    fsExtra.ensureDirSync(uploadDir);
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/zip' || 
+        file.mimetype === 'application/x-zip-compressed' ||
+        file.originalname.toLowerCase().endsWith('.zip')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only ZIP files are allowed'));
+    }
+  }
+}).single('websiteCode');
+
+/**
+ * Extract and analyze uploaded website code
+ * @param zipFilePath - Path to the uploaded ZIP file
+ * @returns Path to extracted code
+ */
+async function extractAndAnalyzeCode(zipFilePath: string): Promise<string> {
+  const extractDir = path.join(process.cwd(), 'uploads', 'extracted', Date.now().toString());
+  await fsExtra.ensureDir(extractDir);
+  
+  // Extract ZIP file
+  const extract = require('extract-zip');
+  await extract(zipFilePath, { dir: extractDir });
+  
+  console.log('Code extracted to:', extractDir);
+  return extractDir;
+}
+
+/**
+ * Analyze website code for mobile optimization
+ * @param codePath - Path to extracted website code
+ * @returns Analysis results
+ */
+async function analyzeWebsiteCode(codePath: string): Promise<any> {
+  const analysis = {
+    files: {
+      html: 0,
+      css: 0,
+      js: 0,
+      images: 0,
+      total: 0
+    },
+    features: {
+      responsive: false,
+      hasForms: false,
+      hasImages: false,
+      hasExternalLinks: false,
+      hasCustomFonts: false,
+      hasReactComponents: false
+    },
+    optimization: {
+      needsMobileOptimization: false,
+      needsImageOptimization: false,
+      needsCodeMinification: false,
+      suggestions: [] as string[]
+    }
+  };
+
+  try {
+    // Scan for files
+    const files = await scanDirectory(codePath);
+    
+    analysis.files.total = files.length;
+    analysis.files.html = files.filter(f => f.endsWith('.html')).length;
+    analysis.files.css = files.filter(f => f.endsWith('.css')).length;
+    analysis.files.js = files.filter(f => f.endsWith('.js')).length;
+    analysis.files.images = files.filter(f => /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(f)).length;
+    
+    // Enhanced file detection for React and modern frameworks
+    const jsxFiles = files.filter(f => f.endsWith('.jsx') || f.endsWith('.tsx')).length;
+    const tsFiles = files.filter(f => f.endsWith('.ts')).length;
+    const jsonFiles = files.filter(f => f.endsWith('.json')).length;
+    
+    // Update total count to include all web files
+    analysis.files.total = files.length;
+    analysis.files.js += jsxFiles + tsFiles; // Include JSX/TSX/TS in JS count
+
+    // Analyze HTML files for features
+    const htmlFiles = files.filter(f => f.endsWith('.html'));
+    for (const htmlFile of htmlFiles) {
+      const content = await fs.readFile(path.join(codePath, htmlFile), 'utf8');
+      
+      // Check for responsive design
+      if (content.includes('viewport') || content.includes('@media')) {
+        analysis.features.responsive = true;
+      }
+      
+      // Check for forms
+      if (content.includes('<form') || content.includes('<input')) {
+        analysis.features.hasForms = true;
+      }
+      
+      // Check for images
+      if (content.includes('<img') || content.includes('background-image')) {
+        analysis.features.hasImages = true;
+      }
+      
+      // Check for external links
+      if (content.includes('http://') || content.includes('https://')) {
+        analysis.features.hasExternalLinks = true;
+      }
+      
+      // Check for custom fonts
+      if (content.includes('@font-face') || content.includes('googleapis.com/fonts')) {
+        analysis.features.hasCustomFonts = true;
+      }
+    }
+    
+    // Analyze React/JSX files for features
+    const reactFiles = files.filter(f => f.endsWith('.jsx') || f.endsWith('.tsx') || f.endsWith('.js') || f.endsWith('.ts'));
+    for (const reactFile of reactFiles) {
+      try {
+        const content = await fs.readFile(path.join(codePath, reactFile), 'utf8');
+        
+        // Check for React components
+        if (content.includes('import React') || content.includes('from "react"') || content.includes('from \'react\'')) {
+          analysis.features.hasReactComponents = true;
+        }
+        
+        // Check for responsive design in React
+        if (content.includes('className') && (content.includes('sm:') || content.includes('md:') || content.includes('lg:') || content.includes('xl:'))) {
+          analysis.features.responsive = true;
+        }
+        
+        // Check for forms in React
+        if (content.includes('onSubmit') || content.includes('useState') || content.includes('form')) {
+          analysis.features.hasForms = true;
+        }
+        
+        // Check for images in React
+        if (content.includes('<img') || content.includes('background') || content.includes('src=')) {
+          analysis.features.hasImages = true;
+        }
+        
+        // Check for external links in React
+        if (content.includes('http://') || content.includes('https://') || content.includes('window.open')) {
+          analysis.features.hasExternalLinks = true;
+        }
+      } catch (error) {
+        console.log(`Could not read React file ${reactFile}:`, (error as Error).message);
+      }
+    }
+
+    // Generate optimization suggestions
+    if (!analysis.features.responsive) {
+      analysis.optimization.needsMobileOptimization = true;
+      analysis.optimization.suggestions.push('Add responsive design with viewport meta tag and CSS media queries');
+    }
+    
+    if (analysis.files.images > 0) {
+      analysis.optimization.needsImageOptimization = true;
+      analysis.optimization.suggestions.push('Optimize images for mobile devices');
+    }
+    
+    if (analysis.files.js > 0 || analysis.files.css > 0) {
+      analysis.optimization.needsCodeMinification = true;
+      analysis.optimization.suggestions.push('Minify CSS and JavaScript for better performance');
+    }
+    
+    // React-specific suggestions
+    if (analysis.features.hasReactComponents) {
+      analysis.optimization.suggestions.push('React components detected - consider using React Native WebView for better mobile performance');
+      analysis.optimization.suggestions.push('Optimize React bundle size for mobile devices');
+    }
+
+  } catch (error) {
+    console.error('Error analyzing website code:', error);
+  }
+
+  return analysis;
+}
+
+/**
+ * Recursively scan directory for files
+ * @param dirPath - Directory to scan
+ * @returns Array of file paths
+ */
+async function scanDirectory(dirPath: string): Promise<string[]> {
+  const files: string[] = [];
+  
+  async function scan(currentPath: string, relativePath: string = '') {
+    const items = await fs.readdir(currentPath);
+    
+    for (const item of items) {
+      const fullPath = path.join(currentPath, item);
+      const relativeItemPath = path.join(relativePath, item);
+      const stat = await fs.stat(fullPath);
+      
+      if (stat.isDirectory()) {
+        await scan(fullPath, relativeItemPath);
+      } else {
+        files.push(relativeItemPath);
+      }
+    }
+  }
+  
+  await scan(dirPath);
+  return files;
+}
+
 const router = Router();
 
 /**
  * POST /api/apps
- * Create a new app
+ * Create a new app (supports both URL and code upload)
  */
-router.post('/', authenticateToken, async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
+router.post('/', authenticateToken, upload, async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.user!._id.toString();
-    const appData = req.body;
-
-    // debugger;
-    // Validate required fields
-    const { name, websiteUrl, packageId, bundleId } = appData;
-    
-    if (!name || !websiteUrl || !packageId) {
-      console.error('Missing required fields: name, websiteUrl, packageId');
+    // Handle multer errors
+    if ((req as any).fileValidationError) {
       res.status(400).json({
         success: false,
-        error: 'Missing required fields: name, websiteUrl, packageId'
+        error: (req as any).fileValidationError
+      });
+      return;
+    }
+    const userId = req.user!._id.toString();
+
+    // Parse form data
+    const uploadMethod = req.body.uploadMethod || 'url';
+    const appData = uploadMethod === 'url' ? req.body : {
+      ...req.body,
+      firebase: req.body.firebase ? JSON.parse(req.body.firebase) : {},
+      appsflyer: req.body.appsflyer ? JSON.parse(req.body.appsflyer) : {},
+      features: req.body.features ? JSON.parse(req.body.features) : {}
+    };
+
+    // Validate required fields based on upload method
+    const { name, packageId, bundleId } = appData;
+    let websiteUrl = appData.websiteUrl;
+    
+    if (!name || !packageId) {
+      console.error('Missing required fields: name, packageId');
+      res.status(400).json({
+        success: false,
+        error: 'Missing required fields: name, packageId'
+      });
+      return;
+    }
+
+    if (uploadMethod === 'url' && !websiteUrl) {
+      console.error('Website URL is required for URL method');
+      res.status(400).json({
+        success: false,
+        error: 'Website URL is required for URL method'
+      });
+      return;
+    }
+
+    if (uploadMethod === 'code' && !req.file) {
+      console.error('Website code file is required for code upload method');
+      res.status(400).json({
+        success: false,
+        error: 'Website code file is required for code upload method'
       });
       return;
     }
@@ -93,6 +345,27 @@ router.post('/', authenticateToken, async (req: IAuthRequest, res: Response, nex
       return;
     }
 
+    // Handle uploaded code file if present
+    let codeAnalysis = null;
+    
+    if (uploadMethod === 'code' && req.file) {
+      try {
+        // Extract and analyze the uploaded code
+        const extractedPath = await extractAndAnalyzeCode(req.file.path);
+        websiteUrl = `file://${extractedPath}`; // Use local file path
+        codeAnalysis = await analyzeWebsiteCode(extractedPath);
+        
+        console.log('Code analysis completed:', codeAnalysis);
+      } catch (error) {
+        console.error('Error processing uploaded code:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to process uploaded website code'
+        });
+        return;
+      }
+    }
+
     // Create new app
     const newApp = new App({
       userId,
@@ -106,6 +379,8 @@ router.post('/', authenticateToken, async (req: IAuthRequest, res: Response, nex
         name: name.trim(),
         description: appData.description?.trim() || '',
         websiteUrl: websiteUrl.trim(),
+        uploadMethod,
+        codeAnalysis,
         
         // Firebase configuration
         firebaseEnabled: appData.firebase?.enabled || false,

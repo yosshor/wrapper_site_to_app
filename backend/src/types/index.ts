@@ -156,6 +156,31 @@ export interface IAppConfig {
   androidPackageId: string;
   iosPackageId: string;
   
+  // Upload method and code analysis
+  uploadMethod?: 'url' | 'code';
+  codeAnalysis?: {
+    files: {
+      html: number;
+      css: number;
+      js: number;
+      images: number;
+      total: number;
+    };
+    features: {
+      responsive: boolean;
+      hasForms: boolean;
+      hasImages: boolean;
+      hasExternalLinks: boolean;
+      hasCustomFonts: boolean;
+    };
+    optimization: {
+      needsMobileOptimization: boolean;
+      needsImageOptimization: boolean;
+      needsCodeMinification: boolean;
+      suggestions: string[];
+    };
+  };
+  
   // Firebase configuration
   firebaseEnabled: boolean;
   firebaseConfig?: {

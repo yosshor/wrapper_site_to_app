@@ -132,11 +132,21 @@ class App {
           "Authorization", 
           "X-Requested-With",
           "Accept",
-          "Origin"
+          "Origin",
+          "Cross-Origin-Resource-Policy"
         ],
-        exposedHeaders: ["Content-Disposition"]
+        exposedHeaders: ["Content-Disposition", "Cross-Origin-Resource-Policy"]
       })
     );
+
+    // Add CORS headers for all responses
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cross-Origin-Resource-Policy');
+      next();
+    });
 
     // Rate limiting
     const limiter = rateLimit({
